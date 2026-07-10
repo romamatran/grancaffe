@@ -1,12 +1,13 @@
-name: Deploy GranCaffe
+name: Deploy GranCaffe Production
 
 
 on:
 
   push:
-
     branches:
-      - development
+      - develop
+
+  workflow_dispatch:
 
 
 
@@ -31,7 +32,6 @@ jobs:
 
     name: Build Docker image and deploy
 
-
     runs-on: ubuntu-latest
 
 
@@ -39,22 +39,19 @@ jobs:
     steps:
 
 
+      ########################################
+      # Checkout
+      ########################################
 
-      #################################
-      # Checkout source
-      #################################
-
-      - name: Checkout repository
+      - name: Checkout source code
 
         uses: actions/checkout@v4
 
 
 
-
-
-      #################################
+      ########################################
       # Docker Buildx
-      #################################
+      ########################################
 
       - name: Setup Docker Buildx
 
@@ -62,34 +59,27 @@ jobs:
 
 
 
-
-
-      #################################
+      ########################################
       # Login GHCR
-      #################################
+      ########################################
 
-      - name: Login to GitHub Container Registry
+      - name: Login GitHub Container Registry
 
         uses: docker/login-action@v3
-
 
         with:
 
           registry: ghcr.io
 
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
 
-          password: ${{ secrets.GHCR_TOKEN }}
-
-
+          password: ${{ secrets.GITHUB_TOKEN }}
 
 
 
-
-
-      #################################
+      ########################################
       # Docker metadata
-      #################################
+      ########################################
 
       - name: Docker metadata
 
@@ -97,12 +87,9 @@ jobs:
 
         uses: docker/metadata-action@v5
 
-
         with:
 
-
           images: ${{ env.IMAGE_NAME }}
-
 
           tags: |
 
@@ -112,30 +99,25 @@ jobs:
 
 
 
-
-
-
-
-      #################################
-      # Build and Push Docker image
-      #################################
+      ########################################
+      # Build and push image
+      ########################################
 
       - name: Build and push Docker image
-
 
         uses: docker/build-push-action@v6
 
 
         with:
 
-
           context: .
-
 
           file: ./Dockerfile
 
-
           push: true
+
+
+          platforms: linux/amd64
 
 
           tags: |
@@ -168,16 +150,14 @@ jobs:
 
 
 
-
-      #################################
+      ########################################
       # Deploy DigitalOcean
-      #################################
+      ########################################
 
       - name: Deploy to DigitalOcean Droplet
 
 
         uses: appleboy/ssh-action@v1.2.0
-
 
 
         with:
@@ -192,7 +172,6 @@ jobs:
           key: ${{ secrets.DO_SSH_KEY }}
 
 
-
           script: |
 
 
@@ -200,8 +179,7 @@ jobs:
 
 
 
-            echo "Starting deployment..."
-
+            echo "Go to application directory"
 
 
             cd /opt/grancaffe
@@ -209,15 +187,10 @@ jobs:
 
 
 
-
             echo "Login GHCR"
 
 
-
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io \
-              -u ${{ github.repository_owner }} \
-              --password-stdin
-
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u romamatran --password-stdin
 
 
 
@@ -225,9 +198,7 @@ jobs:
             echo "Pull latest image"
 
 
-
             docker compose pull
-
 
 
 
@@ -235,19 +206,15 @@ jobs:
             echo "Restart containers"
 
 
-
             docker compose up -d --remove-orphans
 
 
 
 
-
-            echo "Remove unused images"
-
+            echo "Cleanup old images"
 
 
             docker image prune -f
-
 
 
 
@@ -258,17 +225,14 @@ jobs:
 
 
 
+      ########################################
+      # Verify
+      ########################################
 
-
-      #################################
-      # Verify deployment
-      #################################
-
-      - name: Verify deployment
+      - name: Health check
 
 
         uses: appleboy/ssh-action@v1.2.0
-
 
 
         with:
@@ -283,7 +247,6 @@ jobs:
           key: ${{ secrets.DO_SSH_KEY }}
 
 
-
           script: |
 
 
@@ -291,8 +254,14 @@ jobs:
 
 
 
-            echo "Waiting startup..."
+            echo "Containers status"
 
+
+            docker ps
+
+
+
+            echo "Waiting application startup"
 
 
             sleep 20
@@ -300,24 +269,10 @@ jobs:
 
 
 
-
-            echo "Docker containers"
-
+            echo "Checking HTTP"
 
 
-            docker ps
-
-
-
-
-
-            echo "Testing application"
-
-
-
-            curl --fail http://localhost:5000 || exit 1
-
-
+            curl --fail http://localhost:5000
 
 
 
