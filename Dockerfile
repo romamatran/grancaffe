@@ -12,6 +12,9 @@ COPY ./src/ ./
 
 # Restore
 RUN dotnet restore /app/Web/Grand.Web/Grand.Web.csproj
+#################################
+# Build application
+#################################
 
 # Publish application
 RUN dotnet publish \
