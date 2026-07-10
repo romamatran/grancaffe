@@ -10,6 +10,7 @@ on:
       - main
 
 
+
 permissions:
 
   contents: read
@@ -41,7 +42,7 @@ jobs:
 
 
       #################################
-      # Checkout source code
+      # Checkout source
       #################################
 
       - name: Checkout repository
@@ -53,10 +54,10 @@ jobs:
 
 
       #################################
-      # Docker setup
+      # Docker Buildx
       #################################
 
-      - name: Set up Docker Buildx
+      - name: Setup Docker Buildx
 
         uses: docker/setup-buildx-action@v3
 
@@ -77,9 +78,11 @@ jobs:
 
           registry: ghcr.io
 
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
 
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+
 
 
 
@@ -91,9 +94,7 @@ jobs:
 
       - name: Docker metadata
 
-
         id: meta
-
 
         uses: docker/metadata-action@v5
 
@@ -109,6 +110,8 @@ jobs:
             type=raw,value=latest
 
             type=sha
+
+
 
 
 
@@ -168,7 +171,7 @@ jobs:
 
 
       #################################
-      # Deploy to DigitalOcean
+      # Deploy DigitalOcean
       #################################
 
       - name: Deploy to DigitalOcean Droplet
@@ -198,21 +201,7 @@ jobs:
 
 
 
-            echo "================================="
-
-            echo "Starting deployment"
-
-            echo "================================="
-
-
-
-            if [ ! -d "/opt/grancaffe" ]; then
-
-              echo "/opt/grancaffe does not exist"
-
-              exit 1
-
-            fi
+            echo "Starting deployment..."
 
 
 
@@ -222,14 +211,12 @@ jobs:
 
 
 
-            echo "Login to GHCR"
+            echo "Login GHCR"
 
 
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io \
-
               -u ${{ github.repository_owner }} \
-
               --password-stdin
 
 
@@ -246,7 +233,7 @@ jobs:
 
 
 
-            echo "Restart application"
+            echo "Restart containers"
 
 
 
@@ -256,7 +243,7 @@ jobs:
 
 
 
-            echo "Cleanup old images"
+            echo "Remove unused images"
 
 
 
@@ -266,7 +253,7 @@ jobs:
 
 
 
-            echo "Deployment finished"
+            echo "Deployment completed"
 
 
 
@@ -305,7 +292,7 @@ jobs:
 
 
 
-            echo "Waiting for application startup"
+            echo "Waiting startup..."
 
 
 
@@ -315,7 +302,7 @@ jobs:
 
 
 
-            echo "Containers status"
+            echo "Docker containers"
 
 
 
@@ -335,4 +322,4 @@ jobs:
 
 
 
-            echo "Deployment successful"
+            echo "Application is running"
